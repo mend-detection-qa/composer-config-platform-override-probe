@@ -1,6 +1,7 @@
 {
   "description": "Autotest configuration file for dependency tree detection validation",
   "version": 1.7,
+  "_comment_probe_purpose": "This probe targets config.platform faked-platform handling in Composer. The composer.json sets config.platform.php=8.1.0 and config.platform.ext-mbstring=1.0.0 to force resolution under a specific PHP version, while the actual runtime may differ. The negative-leakage guard relies on direct_dependencies_names_list.eq: ['monolog/monolog'] — if php or ext-* platform packages leak as direct deps despite the override, the eq mismatch will fail the test.",
   "base_config": {
     "validate_scan_output": true,
     "_comment_validate_scan_output": "Whether to validate the scan output/exit code. Options: true | false. Default: true",
@@ -8,7 +9,7 @@
       "security_scan_report_conclusion": "success",
       "_comment_security_scan_report_conclusion": "Optional. Expected scan report conclusion. Options: 'success' | 'failure'. This validates the security scan result status. If not provided, this check will not be performed.",
       "total_libs_scanned": {
-        "eq": 0
+        "gte": 2
       },
       "_comment_total_libs_scanned": "Optional. Expected number of libraries scanned with comparison operator. Validates that the scan processed libraries. If not provided, this check will not be performed.",
       "expected_messages": [],
@@ -25,24 +26,31 @@
       "check_update_request_sca_results": false,
       "_comment_check_update_request_sca_results": "Whether to validate extraProperties.scaResults from the update request. Parses scaResults as JSON and asserts: (1) totalFail is empty {}, (2) no results entry has level 'ERROR'. Options: true | false. Default: false",
       "expected_total_dependencies_number": {
-        "eq": 0
+        "gte": 0
       },
       "expected_direct_dependencies_number": {
-        "eq": 0
+        "eq": 1
       },
       "expected_transitive_dependencies_number": {
-        "eq": 0
+        "gte": 0
       },
       "_comment_expected_dependencies_number": "Optional. Expected number of dependencies with comparison operator. Operators: gt (>), gte (>=), lt (<), lte (<=), eq (==). If not provided, this check will not be performed.",
       "direct_dependencies_names_list": {
-        "contains": []
+        "eq": [
+          "monolog/monolog"
+        ]
       },
+      "_comment_direct_dependencies_platform_exclusion": "CRITICAL PROBE ASSERTION: eq operator on direct_dependencies_names_list enforces that php and ext-mbstring are ABSENT from the dependency tree. config.platform.php=8.1.0 and config.platform.ext-mbstring=1.0.0 are faked platform packages used only for resolution — they must NOT appear as dependency tree nodes. If either leaks as a direct dep, the eq mismatch will fail the test.",
       "transitive_dependencies_names_list": {
-        "contains": []
+        "contains": [
+          "psr/log"
+        ]
       },
       "_comment_dependencies_names_list": "Optional. Check specific libraries in direct dependencies. Operators: eq (==), contains (all items from expected list in actual), in(all items from actual list in expected), nin(actual list does not contain provided libs). If not provided, this check will not be performed.",
       "expected_package_managers": {
-        "contains": []
+        "contains": [
+          "php"
+        ]
       },
       "_comment_expected_package_managers": "Optional. Validate scanSummaryInfo.packageManagers list (values normalised to lowercase). Operators: eq (exact match), contains (actual has all expected), in (actual is subset of expected), nin (actual has none of expected). Example: {'contains': ['npm', 'maven']}. If not provided, this check will not be performed.",
       "validate_agent_versions": false,
@@ -50,7 +58,21 @@
       "expected_plugin_version": "",
       "_comment_agent_versions": "Optional. Expected agent and plugin versions. If not provided, this check will not be performed.",
       "validate_mend_tags": false,
-      "_comment_validate_mend_tags": "Whether to validate project tags from Mend Platform BFF API against update request extraProperties. Options: true | false. Default: false. When true, calls the BFF projects/summaries endpoint and cross-validates sourceUrl, repoId, CTX, commitId, repoFullName tags against extraProperties (owner, commitId, branchName, repository)."
+      "_comment_validate_mend_tags": "Whether to validate project tags from Mend Platform BFF API against update request extraProperties. Options: true | false. Default: false. When true, calls the BFF projects/summaries endpoint and cross-validates sourceUrl, repoId, CTX, commitId, repoFullName tags against extraProperties (owner, commitId, branchName, repository).",
+      "validate_checksums": false,
+      "_comment_validate_checksums": "Whether to validate SHA1 checksums of dependencies. Options: true | false. Default: false. When true, runs the checks configured in checksums_config.",
+      "checksums_config": {
+        "check_sha1_not_empty": false,
+        "_comment_check_sha1_not_empty": "Validate that all dependencies have non-empty sha1 and/or checksums.SHA1 fields. Catches missing SHA1 values. Options: true | false. Default: false",
+        "check_sha1_format": false,
+        "_comment_check_sha1_format": "Validate that all SHA1 values are valid 40-character lowercase hex strings. Catches malformed SHA1 values. Options: true | false. Default: false",
+        "check_sha1_consistency": false,
+        "_comment_check_sha1_consistency": "Validate that dep.sha1 matches dep.checksums.SHA1 when both are present. Catches internal inconsistencies. Options: true | false. Default: false",
+        "check_checksums_by_formula": false,
+        "_comment_check_checksums_by_formula": "Recompute SHA1/additionalSha1 using the known per-PM formula and compare against actual values. Supported types: SWIFT (groupId_commit_SWIFT / groupId_version_SWIFT), NPM/YARN (name_version_NPM), PYTHON (name_version_PYTHON), JAVA/MAVEN/GRADLE (groupId_artifactId_version_JAVA), GO (artifactId_versionOrCommit_GO), NUGET/PAKET (_NUGET), CRATE, RUBY, PHP, COCOAPODS, PUB, CABAL, HEX, OPAM, CONDA, R. Options: true | false. Default: false",
+        "expected_dependency_checksums": [],
+        "_comment_expected_dependency_checksums": "Optional. List of specific dependencies with expected SHA1 values. Each entry: {'artifactId': 'pkg-name', 'version': '1.0.0', 'expected_sha1': '<40-char-hex>', 'expected_sha1_other_platform': '<40-char-hex>'}. Version is optional (matches any version if empty). Catches SHA1 regression when scanner changes checksum computation (see TKA-10186). If not provided, this check will not be performed."
+      }
     },
     "validate_vulnerabilities_table": false,
     "_comment_validate_vulnerabilities_table": "Whether to validate the vulnerabilities table. Options: true | false. Default: true",
@@ -74,7 +96,7 @@
       "check_scanner_logs": true,
       "_comment_check_scanner_logs": "Whether to check scanner logs and attach them to Report Portal. Options: true | false. Default: true",
       "detect_secrets": false,
-      "_comment_detect_secrets": "Whether to scan scanner logs for leaked secrets (API tokens, passwords, private keys, etc.). Options: true | false. Default: false. When true, runs TWO checks: (1) Yelp's detect-secrets (Apache 2.0, pure Python \u2014 high-entropy and keyword plugins disabled to avoid false positives on scan context-ids, temp paths, and fork-repo names; AWS/JWT/GitHub/Slack/private-key detectors remain active). (2) Claude agentic check via the Anthropic API \u2014 requires ANTHROPIC_API_KEY; if the key is missing, the SDK is not installed, or the API call fails, this sub-check is skipped with a warning (never fails the test). All found secret values are redacted (first 4 + last 4 chars) before logging; raw values never appear in output. Runs independently of validate_scanner_logs. Skipped on GHE environments.",
+      "_comment_detect_secrets": "Whether to scan scanner logs for leaked secrets (API tokens, passwords, private keys, etc.). Options: true | false. Default: false. When true, runs TWO checks: (1) Yelp's detect-secrets (Apache 2.0, pure Python — high-entropy and keyword plugins disabled to avoid false positives on scan context-ids, temp paths, and fork-repo names; AWS/JWT/GitHub/Slack/private-key detectors remain active). (2) Claude agentic check via the Anthropic API — requires ANTHROPIC_API_KEY; if the key is missing, the SDK is not installed, or the API call fails, this sub-check is skipped with a warning (never fails the test). All found secret values are redacted (first 4 + last 4 chars) before logging; raw values never appear in output. Runs independently of validate_scanner_logs. Skipped on GHE environments.",
       "expected_log_lines": [],
       "_comment_expected_log_lines": "Optional. List of log lines to validate. Each entry should have an 'operator' (eq or regex) and 'value' (string or regex pattern). Example: [{'operator': 'eq', 'value': 'Python version: 3.11'}, {'operator': 'regex', 'value': 'Python version: \\d+\\.\\d+'}]. If not provided, only log attachment will be performed."
     },
