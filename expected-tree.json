@@ -1,0 +1,66 @@
+{
+    "schema_version": "1.0",
+    "pm": "composer",
+    "lockfile": "composer.lock",
+    "pattern": "config-platform-override",
+    "notes": "config.platform in composer.json fakes php=8.1.0 and ext-mbstring=1.0.0 for resolution. The lockfile records the faked values under 'platform-overrides', while 'platform' reflects only the require constraints. Faked platform packages (php, ext-mbstring) MUST NOT appear as dependency tree nodes. Only the two Packagist packages resolved under the faked platform are present.",
+    "project_metadata": {
+        "config_platform_overrides": {
+            "php": "8.1.0",
+            "ext-mbstring": "1.0.0"
+        },
+        "platform_constraints_in_require": {
+            "php": ">=8.1"
+        },
+        "lockfile_platform_block": {
+            "php": ">=8.1"
+        },
+        "lockfile_platform_overrides_block": {
+            "php": "8.1.0",
+            "ext-mbstring": "1.0.0"
+        }
+    },
+    "packages": [
+        {
+            "name": "monolog/monolog",
+            "version": "3.10.0",
+            "scope": "require",
+            "source": "registry",
+            "direct": true,
+            "children": [
+                {
+                    "name": "psr/log",
+                    "version": "3.0.2",
+                    "scope": "require",
+                    "source": "registry",
+                    "direct": false,
+                    "children": []
+                }
+            ]
+        }
+    ],
+    "total_packages": 2,
+    "direct_count": 1,
+    "transitive_count": 1,
+    "unique_packages": [
+        "monolog/monolog:3.10.0",
+        "psr/log:3.0.2"
+    ],
+    "mend_detection_expectations": {
+        "all_packages_must_appear": true,
+        "source_for_all": "registry",
+        "no_missing_transitives": true,
+        "platform_packages_must_not_appear": true,
+        "excluded_from_tree": [
+            "php",
+            "ext-mbstring"
+        ],
+        "failure_modes_exercised": [
+            "Mend uses host PHP version instead of config.platform.php for resolution",
+            "Mend ignores platform-overrides block and re-resolves against real runtime",
+            "faked platform package php leaking into the dependency tree as a node",
+            "faked platform package ext-mbstring leaking into the dependency tree as a node",
+            "Mend reading 'platform' block instead of 'platform-overrides' block for override context"
+        ]
+    }
+}

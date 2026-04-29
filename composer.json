@@ -1,0 +1,20 @@
+{
+    "name": "mend-detection-qa/composer-config-platform-override-probe",
+    "description": "Probe: config.platform overrides faked platform versions for resolution; faked platform must not leak into the dependency tree.",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.1",
+        "monolog/monolog": "^3.0"
+    },
+    "config": {
+        "preferred-install": "dist",
+        "sort-packages": true,
+        "platform": {
+            "php": "8.1.0",
+            "ext-mbstring": "1.0.0"
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
